@@ -1,0 +1,47 @@
+---
+title: "Junghan_Wang_Exam2"
+author: "Jung-Han Wang"
+date: "Tuesday, November 04, 2014"
+output: pdf_document
+---
+
+##Problem1
+The function $$g(x)=log(x)/(1+x) $$ 
+
+was discussed in class. The goal is to optimize g with respect to x.
+
+* a.Optimize $g$ using Newton's Method.
+* b.Optimize $g$ using golden search method.
+
+Solving from problem 1-a first.
+* a.Optimize $g$ using Newton's Method.
+```{r}
+summary(cars)
+```
+
+
+
+```{r}
+summary(cars)
+```
+
+
+
+
+##Problem2
+Hastie and Tibshirani (1990, p.282) described a study to determine risk factors for kyphosis, which is severe forward flexion of the spine following corrective spinal surgery. The age in months at the time of the operation for the 18 subjects for whom kyphosis was present were 12, 15, 42, 52, 59, 73,82, 91, 96, 105, 114, 120, 121, 128, 130, 139, 139, 157 and for the 22 subjects for whom kyphosis was absent were 1, 1, 2, 8, 11, 18, 22, 31, 37, 61, 72, 81, 97, 112, 118, 127, 131, 140, 151, 159, 177, 206.
+
+* a.The goal is to obtain MLEs for $\beta_0$ and $\beta_1$ in the following logistic regression model $$log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x$$
+
+where $\pi(x)$ is the probability of whether kyphosis is present. Create computer programs using the "Iterative Reweighted Least Square" algorithm and the Newton-Raphson algorithm to find MLEs of $\hat{\beta_0},\hat{\beta_1}$
+
+* b.Plot the data. Note the difference in dispersion of age at the two levels of kyphosis.
+
+* c. Fit the model $$log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x+\beta_2x^2$$ using the `Iterative Reweighted Least Squares' algorithm and the Newton-Raphson algorithm to find MLEs of $\hat{\beta_0},\hat{\beta_1}\; and\; \hat{\beta_2}$
+
+* d. Plot the data and the fit.
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
