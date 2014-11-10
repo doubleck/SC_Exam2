@@ -7,6 +7,10 @@ output:
 ---
 
 ```{r, echo=FALSE}
+library(ggplot2)
+```
+
+```{r, echo=FALSE}
 # Clear working environment
 rm(list=ls())
 knitr::opts_chunk$set(warning=FALSE, message=FALSE, comment=NA, fig.width=4, fig.height=3)
@@ -21,6 +25,7 @@ was discussed in class. The goal is to optimize g with respect to x.
 * b.Optimize $g$ using golden search method.
 
 Solving from problem 1-a first.
+
 * a.Optimize $g$ using Newton's Method.
 
 1. The Newton's Algorithm can be written in this form: $$\pmb{x(n+1)=x(n)-H(x(n))^{-1}\bigtriangledown f(x(n))}$$
@@ -28,7 +33,7 @@ Solving from problem 1-a first.
 First step I am verifying that the Hessian Matrix of $x(n)$ written as $H(x(n))$ is non-singular. I used package "Ryacas" to obtain the Hessian matrix which can be achieved by
 
 ```{r}
-library(Ryacas);
+library(Ryacas); 
 hx<-D(D(expression(log(x)/(1+x)), 'x'),'x');hx 
 ## Check H(X(n)) is a non-singular matrix
 ```
@@ -253,8 +258,10 @@ where $\pi(x)$ is the probability of whether kyphosis is present. Create compute
 First load the data into the working environment. First, I load the one with kyphosis present with sequence of 1 attached.  And load the data that kyphosis is not present with sequence of 0 attached.  
 ```{r}
 a.18<-rep(1,18) ##Create eighteen 1 (represent kyphosis present)
-pkyp<-c(12, 15, 42, 52, 59, 73,82, 91, 96, 105, 114, 120, 121, 128, 130, 139, 139, 157)  ##The months that kyphosis present.
-pkyp<-t(rbind(a.18,pkyp)) ##Combine 1 and months that kyphosis present.
+pkyp<-c(12, 15, 42, 52, 59, 73,82, 91, 96, 105, 114, 120, 121, 128, 130, 139, 139, 157)  
+##The months that kyphosis present.
+pkyp<-t(rbind(a.18,pkyp)) 
+##Combine 1 and months that kyphosis present.
 
 ##Follow the same step for those kyphosis not present.
 a.22<-rep(0,22)
@@ -265,7 +272,8 @@ colnames(kyp)[1] <- "kyphosis" ## Change column name
 colnames(kyp)[2] <- "months"   ## Change column name
 x<-kyp[,2]  ## Setting up the matrix for independent variable
 y<-kyp[,1]  ## Setting up the matrix for response variable
-Z<-cbind(rep(1,ncol(kyp)),kyp[,2])  ##(Prepare independent variable with column with value (1) to be calculated )
+Z<-cbind(rep(1,ncol(kyp)),kyp[,2])  
+##(Prepare independent variable with column with value (1) to be calculated )
 ```
 
 Define variables in Logistic Regression.  
@@ -306,83 +314,78 @@ return(x)
 Using Newton-Raphson Algorithm, calculate based on $$\hat{\beta_{i+1}}=\hat{\beta_i}+(Z^TWZ)^{-1}Z^T(y-\mu)$$
 
 ```{r}
-find_update<- function(Z, W, working_response){
-numerator <- t(Z)%*%W%*%working_response
+find_update<- function(Z, W, response){
+numerator <- t(Z)%*%W%*%response
 denominator <- t(Z)%*%W%*%Z
 update <- solve(denominator)%*%numerator
 return(update)
 }
+```
 
-beta <- c(0, 0)
-old_beta <- c(NA, NA)
-counter <- 0
-decimal_places_of_precision <- 7
-verbose <- TRUE
-while(!identical(beta, old_beta)){
+Started to input values to function to initiate the iterations.
+
+```{r}
+beta <- c(0, 0)  ## Set initial point
+beta_0 <- c(NA, NA) ## Set buffer for storing beta_0 which is the beta in the previous iteration
+iteration <- 0 ##Start from Iteration 0
+decimal<- 10 ##Using decimal to the 10th digit.
+verbose <- TRUE ##Set Decision
+
+## Keep the iteration until beta=beta_0
+while(!identical(beta, beta_0)){
+##Calculate mu
 mu <- find_mu(beta, x)
+##Calculate W
 W <- find_W(mu)
-working_response <- find_x(y, beta, mu, Z, W)
-# set old beta equal to current beta before updating
-old_beta <- beta
+response <- find_x(y, beta, mu, Z, W)
+# set beta0 equal to current beta before updating
+beta_0 <- beta
 # replace beta with updated estimates
-beta <- find_update(Z, W, working_response)
-# round to the number of decimal places desired
-beta <- round(c(beta), decimal_places_of_precision)
-counter <- counter+1
-# show us the current value of beta if "verbose" is TRUE
+beta <- find_update(Z, W, response)
+# round to the number of decimal 10.
+beta <- round(c(beta), decimal)
+iteration <- iteration+1
+# Exhibit the result if requirement beta=beta_0
 if(verbose==T){
-msg <- paste0('Iteration ', counter, ': Beta = (', beta[1], ', ', beta[2], ')')
+msg <- paste0('Iteration ', iteration, ': Beta = (', beta[1], ', ', beta[2], ')')
 cat(msg)
 cat('\n')
 }
 }
+```
 
+Verify the result using package GLM. The result is identical to the algorithm shown in the previous step.
+```{r}
 ## Verify the reselt using package GLM
 model<-glm(kyp[,1]~kyp[,2], family=binomial)
-plot(model)
 
 ```
 
 * b.Plot the data. Note the difference in dispersion of age at the two levels of kyphosis.
-```{r}
-library(ggplot2)
 
+I calculate the predicted value based on IWLS method and using the package and found the result to be the same.
+```{r}
+##Calculated predicted value using my own function
 cal_pred<-function(beta,x){1/(1+exp(-(beta[1]+x*beta[2])))}
 pred<-cal_pred(beta,x)
-
-##Create Data Frame for Using Predict Function
+##Calculated predicted value using package
 newdata<- data.frame(month=kyp[,2])
 predict(model, newdata, type="response")
+```
 
+Plot the predicted and Observed in the plot.
+```{r}
 ##Attach the predicted value to dataset
 kyp.plot<-cbind(kyp,pred)
-
-
-##Calculate Residual
-residual<-abs(kyp.plot[,1]-kyp.plot[,3])
-
-##Include Residual in Dataset
-kyp.plot2<-cbind(kyp.plot,residual)
-
-##GGPlot requires Data Frame
-data.p <- as.data.frame(kyp.plot)
-
-ggplot(data.p ,aes(x=months,y=kyphosis)) + geom_point() +
-stat_smooth(method="glm",fullrange=TRUE)
-
 ## PLot X=Months Y=Probability with Fitted Line
-qplot(residual,y, data=data.p)
 plot(kyp[,2],kyp[,1],xlab="Months", ylab="Probability")
+data.p<- data.frame(kyphosis=kyp.plot[,1] ,months=kyp.plot[,2])
 abline(glm(kyphosis~months, data=data.p))
-
-
-
-
-
-
 ```
 
 * c.Fit the model $$log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x+\beta_2x^2$$ using the `Iterative Reweighted Least Squares' algorithm and the Newton-Raphson algorithm to find MLEs of $\hat{\beta_0},\hat{\beta_1}\; and\; \hat{\beta_2}$
+
+By achieving this purpose, I first create extra column for storing $/x^2$ which is the square of months. And combined them into dataset similar to problem 2-1.
 ```{r}
 x<-kyp[,2]
 x<-cbind(x,x*x)
@@ -390,69 +393,97 @@ y<-kyp[,1]
 kyp<-cbind(kyp,x)
 kyp<- kyp[,-3]
 Z <-cbind(rep(1,nrow(kyp)),kyp[,2],kyp[,3])
+```
 
-find_pis <- function(beta, x){
+Follow by using the same code in problem 2-1.  Slighty change the initiate point "$\beta$"" and "$\beta_0$"" to be in the same matrix form.
+```{r}
+find_mu <- function(beta, x){
 # beta a vector of parameter estimates, x a vector of independent variable observations
-pis <- exp(beta%*%t(Z))/(1+exp(beta%*%t(Z)))
-return(pis)
+mu <- exp(beta%*%t(Z))/(1+exp(beta%*%t(Z)))
+return(mu)
 }
 
-find_W <- function(pis){
-W <- diag(c(pis*(1-pis)))
+find_W <- function(mu){
+W <- diag(c(mu*(1-mu)))
 return(W)
 }
 
-find_x <- function(y, beta, pis, Z, W){
-e_t <- y-c(pis)
+find_x <- function(y, beta, mu, Z, W){
+e_t <- y-c(mu)
 x <- Z%*%beta+solve(W)%*%e_t
 return(x)
 }
 
-find_update_irls <- function(Z, W, working_response){
-numerator <- t(Z)%*%W%*%working_response
+find_update_irls <- function(Z, W, response){
+numerator <- t(Z)%*%W%*%response
 denominator <- t(Z)%*%W%*%Z
 update <- solve(denominator)%*%numerator
 return(update)
 }
 
 beta <- c(0, 0,0)
-old_beta <- c(NA, NA,NA)
-counter <- 0
-decimal_places_of_precision <- 7
+beta_0 <- c(NA, NA,NA)
+iteration <- 0
+decimal <- 10
 verbose <- TRUE
-while(!identical(beta, old_beta)){
-pis <- find_pis(beta, x)
-W <- find_W(pis)
-working_response <- find_x(y, beta, pis, Z, W)
+while(!identical(beta, beta_0)){
+mu <- find_mu(beta, x)
+W <- find_W(mu)
+response <- find_x(y, beta, mu, Z, W)
 # set old beta equal to current beta before updating
-old_beta <- beta
+beta_0 <- beta
 # replace beta with updated estimates
-beta <- find_update_irls(Z, W, working_response)
+beta <- find_update_irls(Z, W, response)
 # round to the number of decimal places desired
-beta <- round(c(beta), decimal_places_of_precision)
-counter <- counter+1
+beta <- round(c(beta), decimal)
+iteration <- iteration+1
 # show us the current value of beta if "verbose" is TRUE
 if(verbose==T){
-msg <- paste0('Iteration ', counter, ': Beta = (', beta[1], ', ', beta[2], ',', beta[3], ')')
+msg <- paste0('Iteration ', iteration, ': Beta = (', beta[1], ', ', beta[2], ',', beta[3], ')')
 cat(msg)
 cat('\n')
 }
 }
+```
 
+Verify the result using GLM Function. And found out that the result is the same as shown in the previous algorithm.
+
+```{r}
 ## Verify the reselt using package GLM
-glm(kyp[,1]~kyp[,2]+kyp[,3], family=binomial)
+model2<-glm(kyp[,1]~kyp[,2]+kyp[,3], family=binomial)
+
+```
+
+* d.Plot the data and the fit.
+
+I calculate the predicted value based on IWLS method and using the package and found the result to be the same.
+```{r}
+##Calculated predicted value using my own function
+cal_pred2<-function(beta,x){1/(1+exp(-(beta[1]+x*beta[2]+x^2*beta[3])))}
+x<-x[,1]
+pred2<-cal_pred2(beta,x)
+##Calculated predicted value using package
+newdata2<- data.frame(month=kyp[,2],month2=kyp[,3])
+predict(model2, newdata2, type="response")
+
+```
+
+Plot the predicted and Observed in the plot.
+```{r}
+
+##Attach the predicted value to dataset
+kyp.plot<-cbind(kyp,pred2)
+
+data.p2<- data.frame(kyphosis=kyp.plot[,1] ,months=kyp.plot[,2], pred2=kyp.plot[,4])
+## PLot X=Months Y=Probability with Fitted Line
+ggplot(data.p2, aes(x=months, y=kyphosis))+ geom_point()+ geom_line(data = data.p, aes(x=months, y=pred2))
+
 
 ```
 
 
 
-
-
-
-* d.Plot the data and the fit.
-
 ## Appendix with R code
-
 ```{r all-code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy.opts=list(keep.blank.line=T)}
 ```
 
