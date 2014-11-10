@@ -1,9 +1,16 @@
 ---
-title: "Junghan_Wang_Exam2"
+title: "Junghan Wang Exam2"
 author: "Jung-Han Wang"
 date: "Tuesday, November 04, 2014"
-output: pdf_document
+output:
+  pdf_document: default
 ---
+
+```{r, echo=FALSE}
+# Clear working environment
+rm(list=ls())
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, comment=NA, fig.width=4, fig.height=3)
+```
 
 ##Problem1
 The function $$g(x)=log(x)/(1+x) $$ 
@@ -15,33 +22,440 @@ was discussed in class. The goal is to optimize g with respect to x.
 
 Solving from problem 1-a first.
 * a.Optimize $g$ using Newton's Method.
+
+1. The Newton's Algorithm can be written in this form: $$\pmb{x(n+1)=x(n)-H(x(n))^{-1}\bigtriangledown f(x(n))}$$
+
+First step I am verifying that the Hessian Matrix of $x(n)$ written as $H(x(n))$ is non-singular. I used package "Ryacas" to obtain the Hessian matrix which can be achieved by
+
 ```{r}
-summary(cars)
+library(Ryacas);
+hx<-D(D(expression(log(x)/(1+x)), 'x'),'x');hx 
+## Check H(X(n)) is a non-singular matrix
+```
+
+2. The next step is to set up the stopping condition. I used the stopping condition to be the equation shown below: $$\pmb{\|\bigtriangledown f(x(n))\|} \le \epsilon $$
+
+```{r}
+newton <- function(func,dfunc,hfunc, x0, tol = 1e-9, n.max = 1000) {
+# Newton's method starting at x0
+# func is a function that given x returns the list
+# dfunc is the 1st derivative of func, hfunc is the 2nd derivative of func
+x <- x0  ## Set initial value
+func.x <- func(x) ## Set Input Function
+dfunc.x <- dfunc(x) ## Set Input Function
+hfunc.x <- hfunc(x) ## Set Input Function
+n <- 0 ## Set first turn n<-0
+while ((max(abs(dfunc.x)) > tol) & (n < n.max)) { 
+##Set Convergence Criteria. If dunc(x) greater than tol(tolerance) go to n+1.
+x <- x - dfunc.x/hfunc.x ##solve(hfunc, dfunc) ##Calculate Ax=b solve x 
+func.x <- func(x) 
+dfunc.x <- dfunc(x) ## Set Input Function
+hfunc.x <- hfunc(x) ## Set Input Function
+n <- n + 1 ##Continue to the next n
+}
+if (n == n.max) { ##If n=maximum value, output "newton failed to converge"
+cat('newton failed to converge\n')
+} else {
+return(x)
+}
+}
+```
+
+3. In order to solve the newton function defined in step 2. I calculate the first ($\bigtriangledown f(x)$) and second derivatives (Hessian Matrix) for function $g(x)=log(x)/(1+x)$ Using package (Ryacas).
+
+```{r}
+func <- function(x) {
+  log(x)/(1+x)
+}
+##Calculate First Derivative of Function to X  (dfunc)
+dfunc<-D(expression(log(x)/(1+x)), 'x');dfunc
+##Put the 1st deriv of x into function form
+dfunc<-function(x) {1/x/(1 + x) - log(x)/(1 + x)^2}
+##Calculate Second Derivative of Function to X (hfunc)
+hfunc<-D(D(expression(log(x)/(1+x)), 'x'),'x');hfunc
+##Put the 2nd deriv of x into function form
+hfunc<-function(x) {-(1/x^2/(1 + x) + 1/x/(1 + x)^2 + 
+(1/x/(1 + x)^2 - log(x)*(2*(1 + x))/((1 + x)^2)^2))}
 ```
 
 
+Try function "Newton" with start point from 1 to 5 with interval 1.  Left side of the result represents the value of starting point.
+
+Find maximum point when x=3.591121, with $\pmb{f(x)=0.2784645}$ achived by the following code.
 
 ```{r}
-summary(cars)
+for (x0 in seq(1,5, 1)) ##Try x initial value from 1 to 5, add 1 each run.
+{
+cat(x0, '<-Start Point', newton(func,dfunc,hfunc, x0),
+'<-Ending Point',func(newton(func,dfunc,hfunc, x0)),
+'<-Optimized Value', '\n')
+}
+
 ```
 
 
+* b.Optimize $g$ using golden search method.
 
+Here I am using this notation $x_s$(small x value) $x_m$(medium x value) $x_b$(big x value).
+
+Using Golden-Section method I wish to find $x_s < x_m < x_b$ such that $g(x_s) \ge g(x_b)$ and $g(x_b) \ge g(x_m)$. I define a function to compute Golden-Section method.
+
+```{r}
+gsection = function(ftn, x.s, x.r, x.b, tol = 1e-9) {
+  # applies the golden-section algorithm to minimize ftn
+  # I assume that ftn is a function of a single variable
+  # and that x.s < x.b < x.r and ftn(x.s), ftn(x.r) <= ftn(x.b)
+  # the algorithm iteratively refines x.s, x.r, and x.b and terminates
+  # when x.r - x.s <= tol, then returns x.b
+  
+  # golden ratio plus one
+  gr1 = 1 + (1 + sqrt(5))/2
+  # successively refine x.s, x.r, and x.b
+  f.s = ftn(x.s)
+  f.r = ftn(x.r)
+  f.b = ftn(x.b)
+  while ((x.r - x.s) > tol) {  
+    if ((x.r - x.b) > (x.b - x.s)) {
+      y = x.b + (x.r - x.b)/gr1
+      f.y = ftn(y)
+      if (f.y >= f.b) {
+        x.s = x.b
+        f.s = f.b
+        x.b = y
+        f.b = f.y
+        } else {
+          x.r = y
+          f.r = f.y
+          }
+      } else {
+        y = x.b - (x.b - x.s)/gr1
+        f.y = ftn(y)
+        if (f.y >= f.b) {
+          x.r = x.b
+          f.r = f.b
+          x.b = y
+          f.b = f.y
+          } else {
+            x.s = y
+            f.s = f.y
+            }
+        }
+    }
+  return(x.b)
+  }
+```
+
+Using the Function define in Prblem 1-1
+
+```{r}
+func <- function(x) 
+{
+  log(x)/(1+x)
+}
+```
+
+Then recalling $\bigtriangledown f(x(n))$ which I have already calculated in Problem 1-1.  Define $\bigtriangledown f(x(n))$ to compute the line search function $g(x)$.
+
+```{r}
+##Calculate First Derivative of Function to X  (dfunc)
+dfunc<-D(expression(log(x)/(1+x)), 'x');dfunc
+##Put the 1st deriv of x into function form
+dfunc<-function(x) {1/x/(1 + x) - log(x)/(1 + x)^2}
+```
+
+Next I define a function to perform a line search to find the function that used to search for maximum $x_m$.
+
+```{r}
+line.search <- function(func, x, dfunc, tol = 1e-9, a.max = 100) {
+  # x and gradf are vectors of length d
+  # g(a) =f(x +a*gradf) hasa local minumum at a,
+  # within a tolerance
+  # if no local minimum is found then I use 0 or a.max for a
+  # the value returned is x + a*y
+  if (sum(abs(dfunc)) == 0) return(x) # g(a) constant
+  g <- function(a) return(func(x + a*dfunc))
+  
+  # find a.l < a.m < a.r such that
+  # g(a.m) >=g(a.l)  and g(a.m) >= g(a.r)
+  # a.l
+  a.l <- 0
+  g.l <- g(a.l)
+  # a.m
+  a.m <- 1
+  g.m <- g(a.m)
+  while ((g.m < g.l) & (a.m > tol)) {
+    a.m <- a.m/2
+    g.m <- g(a.m)
+    }
+  # if a suitable a.m was not found then use 0 for a
+  if ((a.m <= tol) & (g.m <= g.l)) return(x)
+  # a.r
+  a.r <- 2*a.m
+  g.r <- g(a.r)
+  while ((g.m <= g.r) & (a.r < a.max)) {
+    a.m <- a.r
+    g.m <- g.r
+    a.r <- 2*a.m
+    g.r <- g(a.r)
+    }
+  # if a suitable a.r was not found then use a.max for a
+  if ((a.r >= a.max) & (g.m < g.r)) return(x - a.max*dfunc)
+  # apply golden-section algorithm to g to find a
+  a <- gsection(g, a.l, a.r, a.m)
+  return(x + a*dfunc)
+  }
+```
+
+In the last step, I define function "ascent" to perform a steepest ascent optimization. 
+
+```{r}
+ascent <- function(func,dfunc, x0, tol = 1e-9, n.max = 100) {
+  # steepest ascent algorithm
+  # find a local minimum of f starting at x0
+  # function gradf is the gradient of f
+  x <- x0
+  x.old <- x
+  x <- line.search(func, x, dfunc(x))
+  n <- 1
+  
+  ##If current func(x)-func(x.old) still greater than tolerance, go to next step n+1.
+  while ((func(x)-func(x.old)> tol) & (n < n.max)) {
+    x.old <- x
+    x <- line.search(func, x, dfunc(x)) 
+    n <- n + 1
+    }
+  return(x)
+  }
+```
+
+After setting up the steepest ascent alforithm, I try to use the starting point from 1 to 5 with interval=1.  
+
+```{r}
+for (x0 in seq(1,5, 1)) ##Try x initial value from 1 to 5, add 1 each run.
+{
+cat(x0, '<-Start Point', ascent(func,dfunc,x0),
+'<-Ending Point',func(ascent(func,dfunc,x0)),
+'<-Optimized Value', '\n')
+}
+
+
+```
+
+Based on the result, for the initial point from 1 to 4, we have optimized value 0.2784645 which is bigger than using 5 as starting point.  Therefore, I judge that the local maximum of func(x) reach its maximum value which $\pmb{f(x)=0.2784645}$, when $\pmb{x=3.591121}$.
 
 ##Problem2
 Hastie and Tibshirani (1990, p.282) described a study to determine risk factors for kyphosis, which is severe forward flexion of the spine following corrective spinal surgery. The age in months at the time of the operation for the 18 subjects for whom kyphosis was present were 12, 15, 42, 52, 59, 73,82, 91, 96, 105, 114, 120, 121, 128, 130, 139, 139, 157 and for the 22 subjects for whom kyphosis was absent were 1, 1, 2, 8, 11, 18, 22, 31, 37, 61, 72, 81, 97, 112, 118, 127, 131, 140, 151, 159, 177, 206.
 
 * a.The goal is to obtain MLEs for $\beta_0$ and $\beta_1$ in the following logistic regression model $$log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x$$
-
 where $\pi(x)$ is the probability of whether kyphosis is present. Create computer programs using the "Iterative Reweighted Least Square" algorithm and the Newton-Raphson algorithm to find MLEs of $\hat{\beta_0},\hat{\beta_1}$
 
-* b.Plot the data. Note the difference in dispersion of age at the two levels of kyphosis.
 
-* c. Fit the model $$log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x+\beta_2x^2$$ using the `Iterative Reweighted Least Squares' algorithm and the Newton-Raphson algorithm to find MLEs of $\hat{\beta_0},\hat{\beta_1}\; and\; \hat{\beta_2}$
+First load the data into the working environment. First, I load the one with kyphosis present with sequence of 1 attached.  And load the data that kyphosis is not present with sequence of 0 attached.  
+```{r}
+a.18<-rep(1,18) ##Create eighteen 1 (represent kyphosis present)
+pkyp<-c(12, 15, 42, 52, 59, 73,82, 91, 96, 105, 114, 120, 121, 128, 130, 139, 139, 157)  ##The months that kyphosis present.
+pkyp<-t(rbind(a.18,pkyp)) ##Combine 1 and months that kyphosis present.
 
-* d. Plot the data and the fit.
-
-```{r, echo=FALSE}
-plot(cars)
+##Follow the same step for those kyphosis not present.
+a.22<-rep(0,22)
+akyp<-c(1, 1, 2, 8, 11, 18, 22, 31, 37, 61, 72, 81, 97, 112, 118, 127, 131, 140, 151, 159, 177, 206)
+akyp<-t(rbind(a.22,akyp))
+kyp<-rbind(pkyp,akyp)
+colnames(kyp)[1] <- "kyphosis" ## Change column name
+colnames(kyp)[2] <- "months"   ## Change column name
+x<-kyp[,2]  ## Setting up the matrix for independent variable
+y<-kyp[,1]  ## Setting up the matrix for response variable
+Z<-cbind(rep(1,ncol(kyp)),kyp[,2])  ##(Prepare independent variable with column with value (1) to be calculated )
 ```
+
+Define variables in Logistic Regression.  
+
+1. The first derivative equation also known as score function can be written as $Z^T*(y-mu)$
+
+For achieving function $log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x$, it can be expressed in $\mu=e^{beta*X^T}/(1+e^{beta*X^T})$
+
+```{r}
+find_mu <- function(beta, x){
+# beta a vector of parameter estimates, x a vector of independent variable observations
+mu <- exp(beta%*%t(Z))/(1+exp(beta%*%t(Z)))
+return(mu)
+}
+```
+
+Write Function Matrix W is diagonal of $\mu*(1-mu)$
+
+```{r}
+find_W <- function(mu){ ##Use this Function to calculate mu
+W <- diag(c(mu*(1-mu)))
+return(W)
+}
+```
+
+Then calculate the adjusted dependent covariates equals to:
+$$x=Z*\hat{\beta_i}+{W^{-1}}(y-\mu) $$
+
+
+```{r}
+find_x <- function(y, beta, mu, Z, W){
+e_t <- y-c(mu)
+x <- Z%*%beta+solve(W)%*%e_t
+return(x)
+}
+```
+
+Using Newton-Raphson Algorithm, calculate based on $$\hat{\beta_{i+1}}=\hat{\beta_i}+(Z^TWZ)^{-1}Z^T(y-\mu)$$
+
+```{r}
+find_update<- function(Z, W, working_response){
+numerator <- t(Z)%*%W%*%working_response
+denominator <- t(Z)%*%W%*%Z
+update <- solve(denominator)%*%numerator
+return(update)
+}
+
+beta <- c(0, 0)
+old_beta <- c(NA, NA)
+counter <- 0
+decimal_places_of_precision <- 7
+verbose <- TRUE
+while(!identical(beta, old_beta)){
+mu <- find_mu(beta, x)
+W <- find_W(mu)
+working_response <- find_x(y, beta, mu, Z, W)
+# set old beta equal to current beta before updating
+old_beta <- beta
+# replace beta with updated estimates
+beta <- find_update(Z, W, working_response)
+# round to the number of decimal places desired
+beta <- round(c(beta), decimal_places_of_precision)
+counter <- counter+1
+# show us the current value of beta if "verbose" is TRUE
+if(verbose==T){
+msg <- paste0('Iteration ', counter, ': Beta = (', beta[1], ', ', beta[2], ')')
+cat(msg)
+cat('\n')
+}
+}
+
+## Verify the reselt using package GLM
+model<-glm(kyp[,1]~kyp[,2], family=binomial)
+plot(model)
+
+```
+
+* b.Plot the data. Note the difference in dispersion of age at the two levels of kyphosis.
+```{r}
+library(ggplot2)
+
+cal_pred<-function(beta,x){1/(1+exp(-(beta[1]+x*beta[2])))}
+pred<-cal_pred(beta,x)
+
+##Create Data Frame for Using Predict Function
+newdata<- data.frame(month=kyp[,2])
+predict(model, newdata, type="response")
+
+##Attach the predicted value to dataset
+kyp.plot<-cbind(kyp,pred)
+
+
+##Calculate Residual
+residual<-abs(kyp.plot[,1]-kyp.plot[,3])
+
+##Include Residual in Dataset
+kyp.plot2<-cbind(kyp.plot,residual)
+
+##GGPlot requires Data Frame
+data.p <- as.data.frame(kyp.plot)
+
+ggplot(data.p ,aes(x=months,y=kyphosis)) + geom_point() +
+stat_smooth(method="glm",fullrange=TRUE)
+
+## PLot X=Months Y=Probability with Fitted Line
+qplot(residual,y, data=data.p)
+plot(kyp[,2],kyp[,1],xlab="Months", ylab="Probability")
+abline(glm(kyphosis~months, data=data.p))
+
+
+
+
+
+
+```
+
+* c.Fit the model $$log(\pi(x)/(1-\pi(x)))=\beta_0+\beta_1x+\beta_2x^2$$ using the `Iterative Reweighted Least Squares' algorithm and the Newton-Raphson algorithm to find MLEs of $\hat{\beta_0},\hat{\beta_1}\; and\; \hat{\beta_2}$
+```{r}
+x<-kyp[,2]
+x<-cbind(x,x*x)
+y<-kyp[,1]
+kyp<-cbind(kyp,x)
+kyp<- kyp[,-3]
+Z <-cbind(rep(1,nrow(kyp)),kyp[,2],kyp[,3])
+
+find_pis <- function(beta, x){
+# beta a vector of parameter estimates, x a vector of independent variable observations
+pis <- exp(beta%*%t(Z))/(1+exp(beta%*%t(Z)))
+return(pis)
+}
+
+find_W <- function(pis){
+W <- diag(c(pis*(1-pis)))
+return(W)
+}
+
+find_x <- function(y, beta, pis, Z, W){
+e_t <- y-c(pis)
+x <- Z%*%beta+solve(W)%*%e_t
+return(x)
+}
+
+find_update_irls <- function(Z, W, working_response){
+numerator <- t(Z)%*%W%*%working_response
+denominator <- t(Z)%*%W%*%Z
+update <- solve(denominator)%*%numerator
+return(update)
+}
+
+beta <- c(0, 0,0)
+old_beta <- c(NA, NA,NA)
+counter <- 0
+decimal_places_of_precision <- 7
+verbose <- TRUE
+while(!identical(beta, old_beta)){
+pis <- find_pis(beta, x)
+W <- find_W(pis)
+working_response <- find_x(y, beta, pis, Z, W)
+# set old beta equal to current beta before updating
+old_beta <- beta
+# replace beta with updated estimates
+beta <- find_update_irls(Z, W, working_response)
+# round to the number of decimal places desired
+beta <- round(c(beta), decimal_places_of_precision)
+counter <- counter+1
+# show us the current value of beta if "verbose" is TRUE
+if(verbose==T){
+msg <- paste0('Iteration ', counter, ': Beta = (', beta[1], ', ', beta[2], ',', beta[3], ')')
+cat(msg)
+cat('\n')
+}
+}
+
+## Verify the reselt using package GLM
+glm(kyp[,1]~kyp[,2]+kyp[,3], family=binomial)
+
+```
+
+
+
+
+
+
+* d.Plot the data and the fit.
+
+## Appendix with R code
+
+```{r all-code, ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE, tidy.opts=list(keep.blank.line=T)}
+```
+
+
+
 
